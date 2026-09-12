@@ -1,0 +1,86 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: #14121A;
+  --surface: #1F1B26;
+  --surface-raised: #262130;
+  --gold: #E8A33D;
+  --gold-dim: #B87F2E;
+  --danger: #C0392B;
+  --available: #4C9A6A;
+  --text: #F2EEE6;
+  --text-muted: #9C93A8;
+  --hairline: #362F42;
+}
+
+* { border-color: var(--hairline); }
+
+html { scroll-behavior: smooth; }
+
+body {
+  color: var(--text);
+  font-family: 'Inter', system-ui, sans-serif;
+  background:
+    radial-gradient(1200px 600px at 20% -10%, rgba(232, 163, 61, 0.08), transparent 60%),
+    radial-gradient(900px 500px at 90% 10%, rgba(76, 154, 106, 0.05), transparent 60%),
+    var(--bg);
+  min-height: 100vh;
+}
+
+.font-display { font-family: 'Fraunces', Georgia, serif; }
+.font-mono-seat { font-family: 'IBM Plex Mono', ui-monospace, monospace; }
+.font-seat { font-family: 'IBM Plex Mono', ui-monospace, monospace; }
+
+/* Ticket stub: a card with a notch cut on the left/right edges, like a real ticket */
+.ticket {
+  position: relative;
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px -12px rgba(0, 0, 0, 0.5);
+  transition: border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+}
+.ticket::before,
+.ticket::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 16px;
+  height: 16px;
+  background: var(--bg);
+  border-radius: 50%;
+  transform: translateY(-50%);
+  z-index: 1;
+}
+.ticket::before { left: -8px; }
+.ticket::after { right: -8px; }
+
+a.ticket:hover, .ticket.interactive:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 28px -12px rgba(0, 0, 0, 0.6);
+}
+
+.ticket-divider {
+  border-left: 2px dashed var(--hairline);
+}
+
+::selection {
+  background: rgba(232, 163, 61, 0.3);
+  color: var(--text);
+}
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--hairline); border-radius: 6px; }
+
+:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}
