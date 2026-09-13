@@ -54,8 +54,10 @@ export default function MyBookings() {
   if (loading) {
     return (
       <AuthGuard>
-        <div className="max-w-2xl mx-auto px-4 py-10 space-y-4">
-          {[0, 1].map(i => <div key={i} className="ticket h-24 animate-pulse bg-surface-raised/40" />)}
+        <div className="bg-surface min-h-screen">
+          <div className="max-w-2xl mx-auto px-4 py-10 space-y-4">
+            {[0, 1].map(i => <div key={i} className="ticket h-24 animate-pulse bg-surface-raised/60" />)}
+          </div>
         </div>
       </AuthGuard>
     )
@@ -64,7 +66,9 @@ export default function MyBookings() {
   if (error) {
     return (
       <AuthGuard>
-        <div className="max-w-2xl mx-auto px-4 py-10 text-danger">Could not load your bookings — {error}</div>
+        <div className="bg-surface min-h-screen">
+          <div className="max-w-2xl mx-auto px-4 py-10 text-danger">Could not load your bookings — {error}</div>
+        </div>
       </AuthGuard>
     )
   }
@@ -72,9 +76,11 @@ export default function MyBookings() {
   if (!rows.length) {
     return (
       <AuthGuard>
-        <div className="max-w-2xl mx-auto px-4 py-10">
-          <div className="border border-dashed border-hairline rounded-md p-10 text-center text-muted">
-            No tickets yet — find something on the Events page.
+        <div className="bg-surface min-h-screen">
+          <div className="max-w-2xl mx-auto px-4 py-10">
+            <div className="bg-bg border border-dashed border-hairline rounded-xl p-12 text-center text-muted">
+              No tickets yet — find something on the Events page.
+            </div>
           </div>
         </div>
       </AuthGuard>
@@ -83,37 +89,39 @@ export default function MyBookings() {
 
   return (
     <AuthGuard>
-      <div className="max-w-2xl mx-auto px-4 py-10 space-y-4">
-        <h1 className="font-display text-2xl mb-6">My tickets</h1>
-        {rows.map(b => {
-          const isPast = new Date(b.events.starts_at) <= new Date()
-          const isCancelled = b.status === 'cancelled'
-          return (
-            <div key={b.id} className={`ticket flex gap-4 p-5 ${isCancelled ? 'opacity-50' : ''}`}>
-              <div className="flex-1 min-w-0">
-                <p className="font-display text-lg truncate">{b.events.title}</p>
-                <p className="font-seat text-gold text-sm mt-0.5">Seat {b.seats.label}</p>
-                <p className="text-sm text-muted mt-1">{b.events.venue}</p>
-                <p className="text-sm text-muted">{new Date(b.events.starts_at).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}</p>
-                <p className="text-xs mt-2">
-                  <span className={isCancelled ? 'text-muted' : 'text-available'}>{b.status}</span>
-                  {b.checked_in_at && <span className="text-gold"> · checked in</span>}
-                </p>
+      <div className="bg-surface min-h-screen">
+        <div className="max-w-2xl mx-auto px-4 py-10 space-y-4">
+          <h1 className="font-display text-2xl font-bold mb-6">My tickets</h1>
+          {rows.map(b => {
+            const isPast = new Date(b.events.starts_at) <= new Date()
+            const isCancelled = b.status === 'cancelled'
+            return (
+              <div key={b.id} className={`ticket flex gap-4 p-5 ${isCancelled ? 'opacity-50' : ''}`}>
+                <div className="flex-1 min-w-0">
+                  <p className="font-display text-lg font-semibold truncate">{b.events.title}</p>
+                  <p className="font-seat text-gold text-sm mt-0.5 font-medium">Seat {b.seats.label}</p>
+                  <p className="text-sm text-muted mt-1">{b.events.venue}</p>
+                  <p className="text-sm text-muted">{new Date(b.events.starts_at).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}</p>
+                  <p className="text-xs mt-2">
+                    <span className={isCancelled ? 'text-muted' : 'text-available font-medium'}>{b.status}</span>
+                    {b.checked_in_at && <span className="text-gold"> · checked in</span>}
+                  </p>
+                  {b.status === 'booked' && !isPast && (
+                    <button disabled={busyId === b.id} onClick={() => cancel(b.id)}
+                      className="mt-3 text-xs text-danger border border-danger/50 rounded-md px-3 py-1.5 hover:bg-danger/5 transition-colors">
+                      {busyId === b.id ? 'Cancelling…' : 'Cancel ticket'}
+                    </button>
+                  )}
+                </div>
                 {b.status === 'booked' && !isPast && (
-                  <button disabled={busyId === b.id} onClick={() => cancel(b.id)}
-                    className="mt-3 text-xs text-danger border border-danger/50 rounded px-3 py-1.5 hover:bg-danger/10 transition-colors">
-                    {busyId === b.id ? 'Cancelling…' : 'Cancel ticket'}
-                  </button>
+                  <div className="ticket-divider pl-4 flex items-center flex-shrink-0">
+                    <QRCodeSVG value={b.id} size={72} bgColor="transparent" fgColor="#1A1A1A" />
+                  </div>
                 )}
               </div>
-              {b.status === 'booked' && !isPast && (
-                <div className="ticket-divider pl-4 flex items-center flex-shrink-0">
-                  <QRCodeSVG value={b.id} size={72} bgColor="transparent" fgColor="#F2EEE6" />
-                </div>
-              )}
-            </div>
-          )
-        })}
+            )
+          })}
+        </div>
       </div>
     </AuthGuard>
   )

@@ -9,14 +9,12 @@ type Seat = {
 }
 
 type Event = {
-  id: string
+  price: number
+  starts_at: string
+  cover_url: string | null
   title: string
   venue: string
-  starts_at: string
   description: string | null
-  cover_url: string | null
-  price: number
-  cols: number
 }
 
 type BookingRow = { seat_id: string }
@@ -52,7 +50,7 @@ export default function EventPage() {
     }
     setEvent(ev)
     setSeats(seatRows ?? [])
-    setBookedSeatIds(new Set((bookingRows as BookingRow[] | null ?? []).map(b => b.seat_id)))
+    setBookedSeatIds(new Set((bookingRows as BookingRow[] ?? []).map(b => b.seat_id)))
     setLoading(false)
   }
 
@@ -62,7 +60,7 @@ export default function EventPage() {
       .from('holds')
       .select('seat_id, user_id')
       .gt('expires_at', new Date().toISOString())
-    setHeldSeatIds(new Set((data as HoldRow[] | null ?? []).filter(h => h.user_id !== user?.id).map(h => h.seat_id)))
+    setHeldSeatIds(new Set((data as HoldRow[] ?? []).filter(h => h.user_id !== user?.id).map(h => h.seat_id)))
   }
 
   useEffect(() => {
@@ -161,99 +159,144 @@ export default function EventPage() {
     return seat.price_override ?? event!.price
   }
 
-  if (loading) return <div className="max-w-2xl mx-auto px-4 py-10 text-muted">Loading seat map…</div>
-  if (!event) return <div className="max-w-2xl mx-auto px-4 py-10 text-danger">Event not found.</div>
+  if (loading) return <div className="max-w-5xl mx-auto px-4 py-10 text-muted">Loading seat map…</div>
+  if (!event) return <div className="max-w-5xl mx-auto px-4 py-10 text-danger">Event not found.</div>
 
   const isPast = new Date(event.starts_at) <= new Date()
-  const total = Array.from(selected).map(sid => seats.find(s => s.id === sid)!).reduce((sum, s) => sum + seatPrice(s), 0)
+  const selectedSeats = Array.from(selected).map(sid => seats.find(s => s.id === sid)!)
+  const total = selectedSeats.reduce((sum, s) => sum + seatPrice(s), 0)
+
+  // Group seats by row letter for the two-sided row-label grid
+  const rowLetters = Array.from(new Set(seats.map(s => s.label[0]))).sort()
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-10">
-      {event.cover_url && <img src={event.cover_url} alt="" className="w-full h-44 object-cover rounded mb-6" />}
-
-      <h1 className="font-display text-2xl">{event.title}</h1>
-      <p className="text-sm text-muted mt-1">{event.venue}</p>
-      <p className="text-sm text-muted">{new Date(event.starts_at).toLocaleString(undefined, { dateStyle: 'full', timeStyle: 'short' })}</p>
-      {event.description && <p className="text-sm mt-3 text-ink/90 max-w-md">{event.description}</p>}
-
-      {isPast ? (
-        <p className="mt-8 text-danger">This event has already happened — booking is closed.</p>
-      ) : (
-        <>
-          <div className="mt-10 mb-2 text-center">
-            <div className="inline-block w-2/3 h-2 rounded-full bg-hairline" style={{ boxShadow: '0 0 24px 2px rgba(232,163,61,0.15)' }} />
-            <p className="text-xs text-muted tracking-wide mt-2">stage</p>
-          </div>
-
-          <div className="overflow-x-auto -mx-4 px-4 mt-6">
-            <div className="grid gap-1.5 mx-auto w-max" style={{ gridTemplateColumns: `repeat(${event.cols}, minmax(1.75rem, 2.25rem))` }}>
-              {seats.map(seat => {
-                const isBooked = bookedSeatIds.has(seat.id)
-                const isHeld = heldSeatIds.has(seat.id)
-                const isSelected = selected.has(seat.id)
-                const isPremium = seat.category === 'premium'
-                return (
-                  <button
-                    key={seat.id}
-                    disabled={isBooked || isHeld}
-                    onClick={() => toggleSeat(seat.id)}
-                    title={`${seat.label} · ₹${seatPrice(seat)}${isPremium ? ' · premium' : ''}`}
-                    className={`h-7 w-7 sm:h-8 sm:w-8 font-seat text-[9px] sm:text-[10px] rounded flex items-center justify-center border transition-colors
-                      ${isBooked ? 'bg-hairline text-muted/60 border-hairline cursor-not-allowed' :
-                        isHeld ? 'bg-gold-dim/30 text-gold-dim border-gold-dim/40 cursor-not-allowed' :
-                        isSelected ? 'bg-gold text-bg border-gold' :
-                        isPremium ? 'bg-surface border-gold/50 text-gold hover:bg-surface-raised' :
-                        'bg-surface border-hairline text-ink hover:border-gold/40'}`}
-                  >
-                    {seat.label}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-
-          <div className="flex flex-wrap gap-4 mt-6 text-xs text-muted">
-            <Legend swatch="bg-surface border border-hairline" label="Available" />
-            <Legend swatch="bg-surface border border-gold/50" label="Premium" />
-            <Legend swatch="bg-gold" label="Selected" />
-            <Legend swatch="bg-gold-dim/30 border border-gold-dim/40" label="Held" />
-            <Legend swatch="bg-hairline" label="Booked" />
-          </div>
-
-          {message && (
-            <p className={`mt-4 text-sm ${message.type === 'error' ? 'text-danger' : 'text-available'}`}>{message.text}</p>
-          )}
-
-          {holdExpiresAt && (
-            <p className="mt-2 text-sm text-gold">Held for you — {secondsLeft}s left to confirm</p>
-          )}
-
-          <div className="ticket flex items-center justify-between mt-6 p-4">
-            <div>
-              <p className="text-xs text-muted">{selected.size} seat{selected.size !== 1 ? 's' : ''} selected</p>
-              <p className="font-seat text-lg text-gold">₹{total}</p>
-            </div>
-            <div className="ticket-divider pl-4 flex gap-2">
-              {!holdExpiresAt && (
-                <button
-                  disabled={selected.size === 0 || holding}
-                  onClick={holdSelected}
-                  className="border border-gold text-gold rounded px-4 py-2 text-sm font-medium hover:bg-gold/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                >
-                  {holding ? 'Holding…' : 'Hold seats'}
-                </button>
+    <div className="max-w-5xl mx-auto px-4 py-10">
+      <div className="grid md:grid-cols-[300px_1fr] gap-8">
+        {/* Left column: poster + details + selected tickets */}
+        <div>
+          <div className="ticket overflow-hidden mb-4">
+            <div className="aspect-[2/3] bg-surface-raised">
+              {event.cover_url ? (
+                <img src={event.cover_url} className="w-full h-full object-cover" alt="" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center font-display text-5xl text-gold/40">
+                  {event.title[0]}
+                </div>
               )}
-              <button
-                disabled={selected.size === 0 || confirming || !holdExpiresAt}
-                onClick={confirmBooking}
-                className="bg-gold text-bg rounded px-4 py-2 text-sm font-medium hover:bg-gold-dim transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-              >
-                {confirming ? 'Confirming…' : 'Confirm booking'}
-              </button>
             </div>
           </div>
-        </>
-      )}
+
+          <h1 className="font-display text-2xl font-bold">{event.title}</h1>
+          <p className="text-sm text-muted mt-1">{event.venue}</p>
+          <p className="text-sm text-muted">{new Date(event.starts_at).toLocaleString(undefined, { dateStyle: 'full', timeStyle: 'short' })}</p>
+          {event.description && <p className="text-sm mt-3">{event.description}</p>}
+
+          {selectedSeats.length > 0 && (
+            <div className="mt-6">
+              <p className="text-xs text-muted mb-2 uppercase tracking-wide">Selected tickets</p>
+              <div className="space-y-2">
+                {selectedSeats.map(s => (
+                  <div key={s.id} className="ticket flex items-center justify-between px-3 py-2 text-sm">
+                    <span>Seat <span className="font-seat text-gold">{s.label}</span></span>
+                    <span className="text-muted">₹{seatPrice(s)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Right column: seat map */}
+        <div>
+          {isPast ? (
+            <p className="text-danger">This event has already happened — booking is closed.</p>
+          ) : (
+            <>
+              <div className="ticket p-6">
+                <div className="screen-arc mb-1" />
+                <p className="text-center text-xs text-muted tracking-widest uppercase mb-6">Screen</p>
+
+                <div className="overflow-x-auto">
+                  <div className="flex flex-col gap-1.5 items-center min-w-max mx-auto">
+                    {rowLetters.map(letter => {
+                      const rowSeats = seats.filter(s => s.label[0] === letter)
+                      return (
+                        <div key={letter} className="flex items-center gap-1.5">
+                          <span className="w-5 text-xs text-muted text-center flex-shrink-0">{letter}</span>
+                          {rowSeats.map(seat => {
+                            const isBooked = bookedSeatIds.has(seat.id)
+                            const isHeld = heldSeatIds.has(seat.id)
+                            const isSelected = selected.has(seat.id)
+                            const isPremium = seat.category === 'premium'
+                            return (
+                              <button
+                                key={seat.id}
+                                disabled={isBooked || isHeld}
+                                onClick={() => toggleSeat(seat.id)}
+                                title={`${seat.label} · ₹${seatPrice(seat)}${isPremium ? ' · premium' : ''}`}
+                                className={`h-7 w-7 font-seat text-[9px] rounded flex items-center justify-center border transition-colors flex-shrink-0
+                                  ${isBooked ? 'bg-surface-raised text-muted/50 border-transparent cursor-not-allowed' :
+                                    isHeld ? 'bg-gold/10 text-gold border-gold/40 cursor-not-allowed' :
+                                    isSelected ? 'bg-gold text-white border-gold' :
+                                    isPremium ? 'bg-transparent border-gold/60 text-gold hover:bg-gold/10' :
+                                    'bg-transparent border-gold/30 text-ink hover:border-gold'}`}
+                              >
+                                {seat.col_index + 1}
+                              </button>
+                            )
+                          })}
+                          <span className="w-5 text-xs text-muted text-center flex-shrink-0">{letter}</span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap gap-4 mt-6 text-xs text-muted justify-center">
+                  <Legend swatch="border border-gold/30 bg-transparent" label="Available" />
+                  <Legend swatch="border border-gold/60 bg-transparent" label="Premium" />
+                  <Legend swatch="bg-gold" label="Selected" />
+                  <Legend swatch="bg-gold/10 border border-gold/40" label="Held" />
+                  <Legend swatch="bg-surface-raised" label="Booked" />
+                </div>
+              </div>
+
+              {message && (
+                <p className={`mt-4 text-sm ${message.type === 'error' ? 'text-danger' : 'text-available'}`}>{message.text}</p>
+              )}
+
+              {holdExpiresAt && (
+                <p className="mt-2 text-sm text-gold font-medium">Held for you — {secondsLeft}s left to confirm</p>
+              )}
+
+              <div className="ticket flex items-center justify-between mt-6 p-4">
+                <div>
+                  <p className="text-xs text-muted">{selected.size} seat{selected.size !== 1 ? 's' : ''} selected</p>
+                  <p className="font-seat text-lg text-gold font-semibold">₹{total}</p>
+                </div>
+                <div className="ticket-divider pl-4 flex gap-2">
+                  {!holdExpiresAt && (
+                    <button
+                      disabled={selected.size === 0 || holding}
+                      onClick={holdSelected}
+                      className="border border-gold text-gold rounded-lg px-4 py-2 text-sm font-medium hover:bg-gold/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                    >
+                      {holding ? 'Holding…' : 'Hold seats'}
+                    </button>
+                  )}
+                  <button
+                    disabled={selected.size === 0 || confirming || !holdExpiresAt}
+                    onClick={confirmBooking}
+                    className="bg-gold text-white rounded-lg px-4 py-2 text-sm font-medium hover:bg-gold-dim transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                  >
+                    {confirming ? 'Confirming…' : 'Confirm booking'}
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
     </div>
   )
 }

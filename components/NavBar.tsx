@@ -16,11 +16,9 @@ export default function Navbar() {
       setUser(user)
       setChecked(true)
     })
-
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null)
     })
-
     return () => subscription.unsubscribe()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -32,32 +30,32 @@ export default function Navbar() {
   }
 
   return (
-    <header className="border-b border-hairline sticky top-0 z-10 backdrop-blur bg-bg/90">
-      <div className="max-w-4xl mx-auto px-4 h-16 flex items-center justify-between">
-        <Link href="/events" className="font-display text-xl tracking-tight">
-          Box Office
+    <header className="border-b border-hairline sticky top-0 z-10 bg-bg/95 backdrop-blur">
+      <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
+        <Link href="/events" className="font-display text-xl font-bold text-ink">
+          Box<span className="text-gold">Office</span>
         </Link>
 
-        <nav className="flex items-center gap-5 text-sm text-muted">
-          <Link href="/events" className="hover:text-ink transition-colors">Events</Link>
+        <nav className="flex items-center gap-6 text-sm font-medium">
+          <Link href="/events" className="text-muted hover:text-ink transition-colors">Events</Link>
 
           {!checked ? null : user ? (
             <>
-              <Link href="/bookings" className="hover:text-ink transition-colors">My bookings</Link>
-              <Link href="/profile" className="hover:text-ink transition-colors">Profile</Link>
+              <Link href="/bookings" className="text-muted hover:text-ink transition-colors">My bookings</Link>
+              <Link href="/profile" className="text-muted hover:text-ink transition-colors">Profile</Link>
               <Link href="/events/new"
-                className="text-bg bg-gold hover:bg-gold-dim transition-colors rounded px-3 py-1.5 font-medium">
+                className="text-white bg-gold hover:bg-gold-dim transition-colors rounded-lg px-4 py-2">
                 Host an event
               </Link>
-              <button onClick={handleLogout} className="hover:text-ink transition-colors">
+              <button onClick={handleLogout} className="text-muted hover:text-ink transition-colors">
                 Log out
               </button>
             </>
           ) : (
             <>
-              <Link href="/login" className="hover:text-ink transition-colors">Log in</Link>
+              <Link href="/login" className="text-muted hover:text-ink transition-colors">Log in</Link>
               <Link href="/signup"
-                className="text-bg bg-gold hover:bg-gold-dim transition-colors rounded px-3 py-1.5 font-medium">
+                className="text-white bg-gold hover:bg-gold-dim transition-colors rounded-lg px-4 py-2">
                 Sign up
               </Link>
             </>
