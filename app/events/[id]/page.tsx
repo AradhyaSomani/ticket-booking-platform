@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'next/navigation'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 
 type Seat = {
@@ -9,11 +10,13 @@ type Seat = {
 }
 
 type Event = {
-  price: number
-  starts_at: string
-  cover_url: string | null
+  id: string
+  owner_id: string
   title: string
   venue: string
+  starts_at: string
+  price: number
+  cover_url: string | null
   description: string | null
 }
 
@@ -35,13 +38,15 @@ export default function EventPage() {
   const [holding, setHolding] = useState(false)
   const [holdExpiresAt, setHoldExpiresAt] = useState<Date | null>(null)
   const [secondsLeft, setSecondsLeft] = useState(0)
+  const [isOwner, setIsOwner] = useState(false)
 
   async function loadAll() {
-    const [{ data: ev, error: evError }, { data: seatRows }, { data: bookingRows }] =
+    const [{ data: ev, error: evError }, { data: seatRows }, { data: bookingRows }, { data: { user } }] =
       await Promise.all([
         supabase.from('events').select('*').eq('id', id).single(),
         supabase.from('seats').select('*').eq('event_id', id).order('row_index').order('col_index'),
         supabase.from('bookings').select('seat_id').eq('event_id', id).eq('status', 'booked'),
+        supabase.auth.getUser(),
       ])
     if (evError) {
       setMessage({ type: 'error', text: `Couldn't load event: ${evError.message}` })
@@ -50,7 +55,8 @@ export default function EventPage() {
     }
     setEvent(ev)
     setSeats(seatRows ?? [])
-    setBookedSeatIds(new Set((bookingRows as BookingRow[] ?? []).map(b => b.seat_id)))
+    setBookedSeatIds(new Set((bookingRows as BookingRow[] | null ?? []).map(b => b.seat_id)))
+    setIsOwner(!!user && ev?.owner_id === user.id)
     setLoading(false)
   }
 
@@ -60,7 +66,7 @@ export default function EventPage() {
       .from('holds')
       .select('seat_id, user_id')
       .gt('expires_at', new Date().toISOString())
-    setHeldSeatIds(new Set((data as HoldRow[] ?? []).filter(h => h.user_id !== user?.id).map(h => h.seat_id)))
+    setHeldSeatIds(new Set((data as HoldRow[] | null ?? []).filter(h => h.user_id !== user?.id).map(h => h.seat_id)))
   }
 
   useEffect(() => {
@@ -155,24 +161,22 @@ export default function EventPage() {
     await loadAll(); await loadHolds()
   }
 
-  function seatPrice(seat: Seat) {
-    return seat.price_override ?? event!.price
-  }
-
   if (loading) return <div className="max-w-5xl mx-auto px-4 py-10 text-muted">Loading seat map…</div>
   if (!event) return <div className="max-w-5xl mx-auto px-4 py-10 text-danger">Event not found.</div>
+
+  const eventPrice = event.price
+  function seatPrice(seat: Seat) {
+    return seat.price_override ?? eventPrice
+  }
 
   const isPast = new Date(event.starts_at) <= new Date()
   const selectedSeats = Array.from(selected).map(sid => seats.find(s => s.id === sid)!)
   const total = selectedSeats.reduce((sum, s) => sum + seatPrice(s), 0)
-
-  // Group seats by row letter for the two-sided row-label grid
   const rowLetters = Array.from(new Set(seats.map(s => s.label[0]))).sort()
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-10">
       <div className="grid md:grid-cols-[300px_1fr] gap-8">
-        {/* Left column: poster + details + selected tickets */}
         <div>
           <div className="ticket overflow-hidden mb-4">
             <div className="aspect-[2/3] bg-surface-raised">
@@ -186,7 +190,15 @@ export default function EventPage() {
             </div>
           </div>
 
-          <h1 className="font-display text-2xl font-bold">{event.title}</h1>
+          <div className="flex items-start justify-between gap-3">
+            <h1 className="font-display text-2xl font-bold">{event.title}</h1>
+            {isOwner && (
+              <Link href={`/events/${id}/dashboard`}
+                className="text-xs text-gold border border-gold rounded-lg px-3 py-1.5 hover:bg-gold/10 transition-colors flex-shrink-0">
+                Manage event
+              </Link>
+            )}
+          </div>
           <p className="text-sm text-muted mt-1">{event.venue}</p>
           <p className="text-sm text-muted">{new Date(event.starts_at).toLocaleString(undefined, { dateStyle: 'full', timeStyle: 'short' })}</p>
           {event.description && <p className="text-sm mt-3">{event.description}</p>}
@@ -206,7 +218,6 @@ export default function EventPage() {
           )}
         </div>
 
-        {/* Right column: seat map */}
         <div>
           {isPast ? (
             <p className="text-danger">This event has already happened — booking is closed.</p>

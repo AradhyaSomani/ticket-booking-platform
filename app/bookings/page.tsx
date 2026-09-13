@@ -115,7 +115,7 @@ export default function MyBookings() {
                 </div>
                 {b.status === 'booked' && !isPast && (
                   <div className="ticket-divider pl-4 flex items-center flex-shrink-0">
-                    <QRCodeSVG value={b.id} size={72} bgColor="transparent" fgColor="#1A1A1A" />
+                    <QRCodeSVG value={b.id} size={72} bgColor="transparent" fgColor="#F1F5F9" />
                   </div>
                 )}
               </div>
